@@ -47,7 +47,7 @@ function nexx_integration_taxonomy_term_request(EntityInterface $term, $operatio
       $actors_field_settings = $field_definitions[$configuration['actor_field']]->getSetting('handler_settings');
 
       /**
-       * Omnia might add more taxonomies then channel and actor in the future.
+       * TODO: Omnia might add more taxonomies then channel and actor in the future.
        * Prepare for this by removing the hard coded names
        */
       if(in_array($term_bundle, $channel_field_settings['target_bundles'])){
