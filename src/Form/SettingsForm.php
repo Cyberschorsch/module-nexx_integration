@@ -13,8 +13,8 @@ use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Entity\EntityManagerInterface;
 
 /**
  * Defines a form that configures nexx video settings.
@@ -23,7 +23,7 @@ class SettingsForm extends ConfigFormBase {
   /**
    * The entity manager service.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   * @var \Drupal\Core\Entity\EntityManagerInterface
    */
   protected $entityManager;
 
@@ -40,7 +40,7 @@ class SettingsForm extends ConfigFormBase {
    * @param \Drupal\Core\Entity\EntityManagerInterface $entity_manager
    *   The entity manager service.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_manager){
+  public function __construct(ConfigFactoryInterface $config_factory, EntityManagerInterface $entity_manager){
     parent::__construct($config_factory);
     $this->entityManager = $entity_manager;
   }
@@ -51,7 +51,7 @@ class SettingsForm extends ConfigFormBase {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('config.factory'),
-      $container->get('entity_type.manager')
+      $container->get('entity.manager')
     );
   }
 
