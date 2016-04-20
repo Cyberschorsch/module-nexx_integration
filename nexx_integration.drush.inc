@@ -14,8 +14,8 @@ function nexx_integration_drush_command() {
   $items['nexx-export-taxonomy'] = array(
     'description' => "Export taxonomy terms to omnia. This inserts all terms into Omnia, it cannot check if they already exist.",
     'arguments' => array(
-      'source_vocabulary' => 'Drupal Vocabulary to export',
-      'destination' => 'omnia destination to export to',
+      'source_vocabulary' => 'Drupal vocabulary to export.',
+      'destination' => 'Omnia destination to export to.',
     ),
     'examples' => array(
       'drush -l http://example.com nexx-export-taxonomy category channel' => 'Export drupal categories vocabulary to omnia channel',
@@ -29,6 +29,9 @@ function nexx_integration_drush_command() {
 
 /**
  * Implements the nexx-export-taxonomy drush command.
+ *
+ * @param (string) $source_vocabulary The drupal vocabulary to export.
+ * @param (string) $destination The omnia destination to export to.
  */
 function drush_nexx_integration_nexx_export_taxonomy($source_vocabulary, $destination) {
   $container = \Drupal::getContainer();
