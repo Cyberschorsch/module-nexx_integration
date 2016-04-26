@@ -142,16 +142,19 @@ class NexxNotification implements NexxNotificationInterface {
     $action,
     $value = NULL
   ) {
+    $api_url = $this->config->get('nexx_api_url');
+    $api_authkey = $this->config->get('nexx_api_authkey');
+
     $data = [
       'streamtype' => $streamtype,
       'action' => $action,
-      'refnr' => $reference_number
+      'refnr' => $reference_number,
+      'authkey' =>  $api_authkey
     ];
     if (isset($value)) {
       $data['value'] = $value;
     }
 
-    $api_url = $this->config->get('nexx_api_url');
 
     try {
       $headers = array(
