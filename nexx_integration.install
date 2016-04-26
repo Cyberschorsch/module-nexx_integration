@@ -1,9 +1,230 @@
 <?php
+use Drupal\Core\Database\Database;
 
 /**
  * @file
  * Install, uninstall and update hooks for nexx integration module.
  */
+
+/**
+ * Implements hook_schema().
+ */
+function nexx_integration_schema() {
+  $schema['nexx_video_data'] = array(
+    'description' => 'Stores video data as received from Omnia video cms per video.',
+    'fields' => array(
+      'mid' => array(
+        'description' => 'Media ID: {media}.mid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vid' => array(
+        'description' => 'Media Revision ID: {media}.vid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nexx_item_id' => array(
+        'description' => 'Nexx item ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'title' => array(
+        'description' => 'The title.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'subtitle' => array(
+        'description' => 'The subtitle.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+      ),
+      'teaser' => array(
+        'description' => 'The teaser.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+      ),
+      'description' => array(
+        'description' => 'The description.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+        'default' => '',
+      ),
+      'uploaded' => array(
+        'description' => 'Time of upload.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'channel_id' => array(
+        'description' => 'Channel ID: {taxonomy_term_data}.tid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'actors_ids' => array(
+        'description' => 'Comma separated Actor IDs.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+      ),
+
+
+      'is_ssc' => array(
+        'description' => 'Is SSC.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_ssc' => array(
+        'description' => 'SSC is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'validfrom_ssc' => array(
+        'description' => 'Valid from: SSC.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'validto_ssc' => array(
+        'description' => 'Valid to: SSC.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'encoded_html5' => array(
+        'description' => 'HTML5 is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'is_mobile' => array(
+        'description' => 'Is Mobile.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_mobile' => array(
+        'description' => 'Mobile is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'validfrom_mobile' => array(
+        'description' => 'Valid from: mobile.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'validto_mobile' => array(
+        'description' => 'Valid to: SSC.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'is_hyve' => array(
+        'description' => 'Is HYVE.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_hyve' => array(
+        'description' => 'HYVE is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'validfrom_hyve' => array(
+        'description' => 'Valid from: hyve.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'validto_hyve' => array(
+        'description' => 'Valid to: hyve.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'active' => array(
+        'description' => 'Is active',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'deleted' => array(
+        'description' => 'Is deleted',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'blocked' => array(
+        'description' => 'Is blocked',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_thumbs' => array(
+        'description' => 'Thumbs are encoded',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'thumb' => array(
+        'description' => 'URL to thumbnails',
+        'type' => 'varchar',
+        'length' => 256,
+      )
+    ),
+    'primary key' => array('mid', 'vid'),
+    'indexes' => array(
+      'active' => array('active'),
+      'deleted' => array('deleted'),
+      'blocked' => array('blocked'),
+    ),
+    'foreign keys' => array(
+      'channel_id' => array('taxonomy_term_data' => 'tid'),
+    ),
+  );
+  $schema['nexx_taxonomy_term_data'] = array(
+    'description' => 'Stores taxonomy data for exchange with Omnia video cms per taxonomy term.',
+    'fields' => array(
+      'tid' => array(
+        'description' => 'Taxonomy term id: {taxonomy_term_data}.tid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vid' => array(
+        'description' => 'The ID of the terms target entity: {taxonomy_term_data}.vid.',
+        'type' => 'varchar_ascii',
+        'not null' => TRUE,
+        'length' => 32,
+      ),
+      'nexx_item_id' => array(
+        'description' => 'Nexx item ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      )
+    )
+  );
+  return $schema;
+}
 
 /**
  * Implements hook_install().
@@ -12,4 +233,234 @@ function nexx_integration_install() {
   $source = drupal_get_path('module', 'nexx_integration') . '/images/icons';
   $destination = \Drupal::config('media_entity.settings')->get('icon_base');
   media_entity_copy_icons($source, $destination);
+}
+
+
+/**
+ * Add nexx_video_data database schema.
+ */
+function nexx_integration_update_8001() {
+  $spec = array(
+    'description' => 'Stores video data as received from Omnia video cms per video.',
+    'fields' => array(
+      'mid' => array(
+        'description' => 'Media ID: {media}.mid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vid' => array(
+        'description' => 'Media Revision ID: {media}.vid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'nexx_item_id' => array(
+        'description' => 'Nexx item ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'title' => array(
+        'description' => 'The title.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'subtitle' => array(
+        'description' => 'The subtitle.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+      ),
+      'teaser' => array(
+        'description' => 'The teaser.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+      ),
+      'description' => array(
+        'description' => 'The description.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+        'default' => '',
+      ),
+      'uploaded' => array(
+        'description' => 'Time of upload.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'channel_id' => array(
+        'description' => 'Channel ID: {taxonomy_term_data}.tid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'actors_ids' => array(
+        'description' => 'Comma separated Actor IDs.',
+        'type' => 'varchar',
+        'length' => 256,
+        'not null' => FALSE,
+      ),
+
+
+      'is_ssc' => array(
+        'description' => 'Is SSC.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_ssc' => array(
+        'description' => 'SSC is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'validfrom_ssc' => array(
+        'description' => 'Valid from: SSC.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'validto_ssc' => array(
+        'description' => 'Valid to: SSC.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'encoded_html5' => array(
+        'description' => 'HTML5 is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'is_mobile' => array(
+        'description' => 'Is Mobile.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_mobile' => array(
+        'description' => 'Mobile is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'validfrom_mobile' => array(
+        'description' => 'Valid from: mobile.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'validto_mobile' => array(
+        'description' => 'Valid to: SSC.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'is_hyve' => array(
+        'description' => 'Is HYVE.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_hyve' => array(
+        'description' => 'HYVE is encoded.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'validfrom_hyve' => array(
+        'description' => 'Valid from: hyve.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'validto_hyve' => array(
+        'description' => 'Valid to: hyve.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
+      'active' => array(
+        'description' => 'Is active',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'deleted' => array(
+        'description' => 'Is deleted',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'blocked' => array(
+        'description' => 'Is blocked',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'encoded_thumbs' => array(
+        'description' => 'Thumbs are encoded',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE
+      ),
+      'thumb' => array(
+        'description' => 'URL to thumbnails',
+        'type' => 'varchar',
+        'length' => 256,
+      )
+    ),
+    'primary key' => array('mid', 'vid'),
+    'indexes' => array(
+      'active' => array('active'),
+      'deleted' => array('deleted'),
+      'blocked' => array('blocked'),
+    ),
+    'foreign keys' => array(
+      'channel_id' => array('taxonomy_term_data' => 'tid'),
+    ),
+  );
+  $schema = Database::getConnection()->schema();
+  $schema->createTable('nexx_video_data', $spec);
+}
+
+/**
+ * Add nexx_taxonomy_term_data database schema.
+ */
+function nexx_integration_update_8002() {
+  $spec = array(
+    'description' => 'Stores taxonomy data for exchange with Omnia video cms per taxonomy term.',
+    'fields' => array(
+      'tid' => array(
+        'description' => 'Taxonomy term id: {taxonomy_term_data}.tid.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vid' => array(
+        'description' => 'The ID of the terms target entity: {taxonomy_term_data}.vid.',
+        'type' => 'varchar_ascii',
+        'not null' => TRUE,
+        'length' => 32,
+      ),
+      'nexx_item_id' => array(
+        'description' => 'Nexx item ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      )
+    )
+  );
+  $schema = Database::getConnection()->schema();
+  $schema->createTable('nexx_taxonomy_term_data', $spec);
 }
