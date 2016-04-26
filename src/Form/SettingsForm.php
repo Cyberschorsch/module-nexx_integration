@@ -75,6 +75,12 @@ class SettingsForm extends ConfigFormBase {
       '#title' => $this->t('API Url'),
       '#default_value' => $api_url,
     ];
+    $api_url = !empty($values['nexx_api_authkey']) ? $values['nexx_api_authkey'] : $settings->get('nexx_api_authkey');
+    $form['nexx_api_authkey'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('API authkey'),
+      '#default_value' => $api_url,
+    ];
 
     $omnia_id = !empty($values['omnia_id']) ? $values['omnia_id'] : $settings->get('omnia_id');
     $form['omnia_id'] = [
@@ -116,6 +122,7 @@ class SettingsForm extends ConfigFormBase {
       ->set('channel_vocabulary', $values['vocabulary_settings']['channel_vocabulary'])
       ->set('actor_vocabulary', $values['vocabulary_settings']['actor_vocabulary'])
       ->set('nexx_api_url', $values['nexx_api_url'])
+      ->set('nexx_api_authkey', $values['nexx_api_authkey'])
       ->set('omnia_id', $values['omnia_id'])
       ->save();
   }

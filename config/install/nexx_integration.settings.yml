@@ -1,3 +1,4 @@
 video_bundle: ''
-nexx_api_url: ''
+nexx_api_url: 'https://api.nexxcdn.com/hooks/thunder.omnia'
+nexx_api_authkey: ''
 omnia_id: ''
