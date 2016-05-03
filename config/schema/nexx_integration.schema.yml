@@ -9,7 +9,7 @@ nexx_integration.settings:
       type: string
       label:  'The URL to the nexx CRUD API.'
     nexx_api_authkey:
-      type: integer
+      type: string
       label:  'Authkey for nexx API.'
     omnia_id:
       type: integer
