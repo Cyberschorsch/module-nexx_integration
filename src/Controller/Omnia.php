@@ -3,7 +3,6 @@
 namespace Drupal\nexx_integration\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Utility\Token;
@@ -45,11 +44,6 @@ class Omnia extends ControllerBase {
   protected $logger;
 
   /**
-   * @var \Drupal\Core\Database\Connection
-   */
-  protected $connection;
-
-  /**
    * @var \Drupal\Core\Utility\Token;
    */
   protected $token;
@@ -60,8 +54,6 @@ class Omnia extends ControllerBase {
    *  The date formatter service.
    * @param EntityFieldManagerInterface $entity_field_manager
    *  The entity field manager
-   * @param Connection $connection
-   *  The database service
    * @param LoggerInterface $logger
    *  The logger service
    * @param Token $token
@@ -70,13 +62,11 @@ class Omnia extends ControllerBase {
   public function __construct(
     EntityTypeBundleInfoInterface $entity_type_bundle_info,
     EntityFieldManagerInterface $entity_field_manager,
-    Connection $connection,
     LoggerInterface $logger,
     Token $token
   ) {
     $this->entityTypeBundleInfo = $entity_type_bundle_info;
     $this->entityFieldManager = $entity_field_manager;
-    $this->connection = $connection;
     $this->logger = $logger;
     $this->token = $token;
   }
@@ -88,7 +78,6 @@ class Omnia extends ControllerBase {
     return new static(
       $container->get('entity_type.bundle.info'),
       $container->get('entity_field.manager'),
-      $container->get('database'),
       $container->get('logger.factory')->get('nexx_integration'),
       $container->get('token')
     );
@@ -100,7 +89,7 @@ class Omnia extends ControllerBase {
   public function video(Request $request) {
     $response = new JsonResponse();
     $content = $request->getContent();
-    $query = $this->connection->select('nexx_video_data', 'data');
+    $query = $this->mediaEntityStorage()->getQuery();
 
     if (!empty($content)) {
       $videoData = json_decode($content);
@@ -117,11 +106,9 @@ class Omnia extends ControllerBase {
       )
     );
 
-    $ids = $query
-      ->fields('data', ['nexx_item_id'])
-      ->condition('nexx_item_id', $videoData->itemID)
+    $ids = $query->condition($video_field . '.item_id', $videoData->itemID)
       ->execute();
-    $this->logger->debug('Selected ids: @id)', array('@id' => print_r($ids[0], TRUE)));
+
     if ($id = array_pop($ids)) {
       $media = $this->mediaEntity($id);
     }

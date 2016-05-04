@@ -7,10 +7,15 @@
 
 namespace Drupal\nexx_integration\Plugin\MediaEntity\Type;
 
+use Drupal\Core\Config\Config;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\media_entity\MediaBundleInterface;
 use Drupal\media_entity\MediaInterface;
 use Drupal\media_entity\MediaTypeBase;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 
 /**
@@ -24,10 +29,76 @@ use Drupal\media_entity\MediaTypeBase;
  */
 class NexxVideo extends MediaTypeBase {
   /**
+   * @var \Psr\Log\LoggerInterface
+   */
+  protected $logger;
+
+  /**
+   * Constructs a new class instance.
+   *
+   * @param array $configuration
+   *   A configuration array containing information about the plugin instance.
+   * @param string $plugin_id
+   *   The plugin_id for the plugin instance.
+   * @param mixed $plugin_definition
+   *   The plugin implementation definition.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   *   Entity type manager service.
+   * @param \Drupal\Core\Entity\EntityFieldManagerInterface $entity_field_manager
+   *   Entity field manager service.
+   * @param \Drupal\Core\Config\Config $config
+   *   Media entity config object.
+   * @param LoggerInterface $logger
+   *  The logger service
+   */
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EntityFieldManagerInterface $entity_field_manager, Config $config, LoggerInterface $logger) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $entity_field_manager, $config);
+    $this->logger = $logger;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('entity_type.manager'),
+      $container->get('entity_field.manager'),
+      $container->get('config.factory')->get('media_entity.settings'),
+      $container->get('logger.factory')->get('nexx_integration')
+    );
+  }
+
+
+  /**
    * {@inheritdoc}
    */
   public function providedFields() {
-    return [];
+    return [
+      'nexx_item_id' => 'Nexx item ID.',
+      'subtitle' => 'The subtitle.',
+      'teaser' => 'The teaser.',
+      'description' => 'The description.',
+      'uploaded' => 'Time of upload.',
+      'is_ssc' => 'Is SSC.',
+      'encoded_ssc' => 'SSC is encoded.',
+      'validfrom_ssc' => 'Valid from: SSC.',
+      'validto_ssc' => 'Valid to: SSC.',
+      'encoded_html5' => 'HTML5 is encoded.',
+      'is_mobile' => 'Is Mobile.',
+      'encoded_mobile' => 'Mobile is encoded.',
+      'validfrom_mobile' => 'Valid from: mobile.',
+      'validto_mobile' => 'Valid to: SSC.',
+      'is_hyve' => 'Is HYVE.',
+      'encoded_hyve' => 'HYVE is encoded.',
+      'validfrom_hyve' => 'Valid from: hyve.',
+      'validto_hyve' => 'Valid to: hyve.',
+      'active' => 'Is active',
+      'deleted' => 'Is deleted',
+      'blocked' => 'Is blocked',
+    ];
   }
 
   /**
@@ -40,10 +111,27 @@ class NexxVideo extends MediaTypeBase {
   /**
    * {@inheritdoc}
    */
-  public function thumbnail(MediaInterface $media) {
-    // TODO: implement logic to fill this with the provided thumbnail
+  public function getDefaultThumbnail() {
     return $this->config->get('icon_base') . '/nexxvideo.png';
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function thumbnail(MediaInterface $media) {
+    $teaser_field = $this->configuration['teaser_image_field'];
+    $uri = $media->{$teaser_field}->first()->getFileUri();
+
+    $this->logger->debug("field map: @field", array('@uri' => print_r($teaser_field, TRUE)));
+    $this->logger->debug("thumbnail uri: @uri", array('@uri' => $uri));
+    if ($uri) {
+      return $uri;
+    }
+
+    return $this->getDefaultThumbnail();
+  }
+
+
   /**
    * {@inheritdoc}
    */
@@ -75,10 +163,10 @@ class NexxVideo extends MediaTypeBase {
     $form['teaser_image_field'] = [
       '#type' => 'select',
       '#title' => 'Teaser image ' . $bundle->label() ?: $this->t('Fields'),
-      '#options' => $this->getMediaEntityReferenceFields($bundle->id(), ['media', 'image', 'file']),
+      '#options' => $this->getMediaEntityReferenceFields($bundle->id(), ['media_bundle']),
       '#empty_option' => $this->t('Select field'),
       '#default_value' => $default_bundle,
-      '#description' => $this->t('The taxonomy which is used for actors. You can create a bundle without selecting a value for this dropdown initially. This dropdown can be populated after adding taxonomy term entity references to the bundle.'),
+      '#description' => $this->t('The field which is used for the teaser image. You can create a bundle without selecting a value for this dropdown initially. This dropdown can be populated after adding media, image or file fields to the bundle.'),
     ];
     return $form;
   }
@@ -96,7 +184,10 @@ class NexxVideo extends MediaTypeBase {
 
     foreach ($this->entityFieldManager->getFieldDefinitions('media', $bundle_id) as $field_id => $field_info) {
       // filter entity_references which are not base fields
-      if ($field_info->getType() === 'entity_reference' && !$field_info->getFieldStorageDefinition()->isBaseField() && in_array($field_info->getSettings()['target_type'], $target_types)) {
+
+      if ($field_info->getType() === 'entity_reference' && !$field_info->getFieldStorageDefinition()
+          ->isBaseField() && in_array($field_info->getSettings()['target_type'], $target_types)
+      ) {
         $bundle_options[$field_id] = $field_info->getLabel();
       }
     }
