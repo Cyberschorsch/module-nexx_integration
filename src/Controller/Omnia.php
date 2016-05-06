@@ -106,6 +106,7 @@ class Omnia extends ControllerBase {
       )
     );
 
+    $video_field = $this->videoFieldName();
     $ids = $query->condition($video_field . '.item_id', $videoData->itemID)
       ->execute();
 
@@ -148,6 +149,8 @@ class Omnia extends ControllerBase {
 
   protected function mapData(MediaInterface $media, $videoData) {
     $entityType = $this->mediaEntityDefinition();
+    $videoField = $this->videoFieldName();
+
     $labelKey = $entityType->getKey('label');
 
 
@@ -155,7 +158,7 @@ class Omnia extends ControllerBase {
     $actor_ids = !empty($videoData->itemData->actors_ids) ? $videoData->itemData->actors_ids : '';
     $channel_id = !empty($videoData->itemData->channel_id) ? $videoData->itemData->channel_id : 0;
 
-/*
+
     $media->$videoField->item_id = !empty($videoData->itemID) ? $videoData->itemID : 0;
     $media->$videoField->title = $title;
     $media->$videoField->alttitle = !empty($videoData->itemData->alttitle) ? $videoData->itemData->alttitle : '';
@@ -183,7 +186,7 @@ class Omnia extends ControllerBase {
     $media->$videoField->isDeleted = !empty($videoData->itemStates->isDeleted) ? $videoData->itemStates->isDeleted : 0;
     $media->$videoField->isBlocked = !empty($videoData->itemStates->isBlocked) ? $videoData->itemStates->isBlocked : 0;
     $media->$videoField->encodedTHUMBS = !empty($videoData->itemStates->encodedTHUMBS) ? $videoData->itemStates->encodedTHUMBS : 0;
-*/
+
     // copy title to label field
     $media->$labelKey = $title;
 
@@ -199,9 +202,13 @@ class Omnia extends ControllerBase {
     if ($actorField && !empty($actor_ids)) {
       $media->$actorField = explode(',', $actor_ids);
     }
-    if ($teaserImageField) {
+    if ($teaserImageField && $media->$videoField->thumb !== $videoData->itemData->thumb) {
       if (!empty($videoData->itemData->thumb)) {
+        $media->$videoField->thumb = $videoData->itemData->thumb;
         $this->mapTeaserImage($media, $teaserImageField, $videoData);
+      }
+      else {
+        $media->$videoField->thumb = '';
       }
     }
   }
@@ -281,6 +288,26 @@ class Omnia extends ControllerBase {
         ->getDefinition('media');
     }
     return $this->mediaEntityDefinition;
+  }
+
+  protected function videoFieldName() {
+    $entity_type_id = 'media';
+    $videoBundle = $this->config('nexx_integration.settings')
+      ->get('video_bundle');
+
+    $fieldDefinitions = $this->entityFieldManager->getFieldDefinitions($entity_type_id, $videoBundle);
+    foreach ($fieldDefinitions as $fieldname => $fieldDefinition) {
+      if ($fieldDefinition->getType() === 'nexx_video_data') {
+        $videoField = $fieldname;
+        break;
+      }
+    }
+
+    if (empty($videoField)) {
+      throw new \Exception('No video data field defined');
+    }
+
+    return $videoField;
   }
 
   protected function termId($taxonomy, $name) {
