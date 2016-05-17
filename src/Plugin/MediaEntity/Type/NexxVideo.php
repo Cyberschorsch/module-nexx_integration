@@ -10,6 +10,7 @@ namespace Drupal\nexx_integration\Plugin\MediaEntity\Type;
 use Drupal\Core\Config\Config;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
+use Drupal\Core\Field\Plugin\Field\FieldType\EntityReferenceItem;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\media_entity\MediaBundleInterface;
 use Drupal\media_entity\MediaInterface;
@@ -120,14 +121,24 @@ class NexxVideo extends MediaTypeBase {
    */
   public function thumbnail(MediaInterface $media) {
     $teaser_field = $this->configuration['teaser_image_field'];
-    $uri = $media->{$teaser_field}->first()->getFileUri();
+    $teaser_image = $media->{$teaser_field}->first()->entity;
 
-    $this->logger->debug("field map: @field", array('@uri' => print_r($teaser_field, TRUE)));
-    $this->logger->debug("thumbnail uri: @uri", array('@uri' => $uri));
-    if ($uri) {
-      return $uri;
+    $source_field = $this->entityTypeManager->getStorage('media_bundle')
+      ->load($teaser_image->bundle())
+      ->getTypeConfiguration()['source_field'];
+
+    if(!empty($source_field)) {
+
+      /**
+       * @var \Drupal\file\Entity\File $uri
+       */
+      $uri = $teaser_image->{$source_field}->first()->entity->getFileUri();
+      $this->logger->debug("field map: @field", array('@field' => print_r($teaser_field, TRUE)));
+      $this->logger->debug("thumbnail uri: @uri", array('@uri' => $uri));
+      if ($uri) {
+        return $uri;
+      }
     }
-
     return $this->getDefaultThumbnail();
   }
 
@@ -159,11 +170,21 @@ class NexxVideo extends MediaTypeBase {
       '#description' => $this->t('The taxonomy which is used for actors. You can create a bundle without selecting a value for this dropdown initially. This dropdown can be populated after adding taxonomy term entity references to the bundle.'),
     ];
 
+    $default_bundle = !empty($values['tags_field']) ? $values['tags_field'] : $this->configuration['tags_field'];
+    $form['tags_field'] = [
+      '#type' => 'select',
+      '#title' => 'Tags ' . $bundle->label() ?: $this->t('Fields'),
+      '#options' => $this->getMediaEntityReferenceFields($bundle->id(), ['taxonomy_term']),
+      '#empty_option' => $this->t('Select field'),
+      '#default_value' => $default_bundle,
+      '#description' => $this->t('The taxonomy which is used for tags. You can create a bundle without selecting a value for this dropdown initially. This dropdown can be populated after adding taxonomy term entity references to the bundle.'),
+    ];
+
     $default_bundle = !empty($values['teaser_image_field']) ? $values['teaser_image_field'] : $this->configuration['teaser_image_field'];
     $form['teaser_image_field'] = [
       '#type' => 'select',
       '#title' => 'Teaser image ' . $bundle->label() ?: $this->t('Fields'),
-      '#options' => $this->getMediaEntityReferenceFields($bundle->id(), ['media_bundle']),
+      '#options' => $this->getMediaEntityReferenceFields($bundle->id(), ['media']),
       '#empty_option' => $this->t('Select field'),
       '#default_value' => $default_bundle,
       '#description' => $this->t('The field which is used for the teaser image. You can create a bundle without selecting a value for this dropdown initially. This dropdown can be populated after adding media, image or file fields to the bundle.'),

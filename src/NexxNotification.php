@@ -74,31 +74,32 @@ class NexxNotification implements NexxNotificationInterface {
   /**
    * {@inheritdoc}
    */
-  function insert($streamtype, $reference_number, $value) {
+  function insert($streamtype, $reference_number, $values) {
     if ($streamtype === 'video') {
       throw new \InvalidArgumentException(sprintf('Streamtype cannot be "%s" in insert operation.', $streamtype));
     }
-    $this->notificateNexx($streamtype, $reference_number, 'insert', $value);
-    $this->logger->info("insert @type. Reference number: @reference, value @value", array(
+    $response = $this->notificateNexx($streamtype, $reference_number, 'insert', $values);
+    $this->logger->info("insert @type. Reference number: @reference, values: @values", array(
         '@type' => $streamtype,
         '@reference' => $reference_number,
-        '@value' => $value
+        '@values' => print_r($values, TRUE)
       )
     );
-
+    return $response;
   }
 
   /**
    * {@inheritdoc}
    */
-  function update($streamtype, $reference_number, $value) {
-    $this->notificateNexx($streamtype, $reference_number, 'update', $value);
-    $this->logger->info("update @type. Reference number: @reference, value @value", array(
+  function update($streamtype, $reference_number, $values) {
+    $response = $this->notificateNexx($streamtype, $reference_number, 'update', $values);
+    $this->logger->info("update @type. Reference number: @reference, values: @values", array(
         '@type' => $streamtype,
         '@reference' => $reference_number,
-        '@value' => $value
+        '@values' => print_r($values, TRUE)
       )
     );
+    return $response;
   }
 
   /**
@@ -108,12 +109,14 @@ class NexxNotification implements NexxNotificationInterface {
     if ($streamtype === 'video') {
       throw new \InvalidArgumentException(sprintf('Streamtype cannot be "%s" in delete operation.', $streamtype));
     }
-    $this->notificateNexx($streamtype, $reference_number, 'delete');
+    $response = $this->notificateNexx($streamtype, $reference_number, 'delete');
     $this->logger->info("delete @type. Reference number: @reference", array(
         '@type' => $streamtype,
         '@reference' => $reference_number
       )
     );
+
+    return $response;
   }
 
   /**
@@ -128,56 +131,65 @@ class NexxNotification implements NexxNotificationInterface {
    * @param string $reference_number
    *   Reference id. In case of streamtype video, this is the nexx ID in all
    *   other cases, this is the corresponding drupal id.
-   * @param string $action
+   * @param string $command
    *   CRUD operation. Possible values are:
    *   - "insert"
    *   - "update"
    *   - "delete"
-   * @param string $value
-   *   The value to be set.
+   * @param string[] $values
+   *   The values to be set.
    */
   protected function notificateNexx(
     $streamtype,
     $reference_number,
-    $action,
-    $value = NULL
+    $command,
+    $values = []
   ) {
     $api_url = $this->config->get('nexx_api_url');
     $api_authkey = $this->config->get('nexx_api_authkey');
 
+    $response_data = [];
     $data = [
       'streamtype' => $streamtype,
-      'action' => $action,
+      'command' => $command,
       'refnr' => $reference_number,
       'authkey' =>  $api_authkey
     ];
-    if (isset($value)) {
-      $data['value'] = $value;
+
+    if (isset($values)) {
+      $data += $values;
     }
 
-
     try {
-      $headers = array(
-        'Content-Type' => 'application/json'
-      );
       $options = array(
-        'headers' => $headers,
-        'body' => Json::encode($data),
+        'form_params' => $data,
       );
-      $this->httpClient->post($api_url, $options);
-      $this->logger->info("Successful notification. Streamtype '@streamtype', action '@action', refnr '@refnr', value '@value'", array(
-        '@streamtype' => $streamtype,
-        '@action' => $action,
-        '@refnr' => $reference_number,
-        '@value' => $value
-      )
-      );
+
+      $response = $this->httpClient->request('POST', $api_url, $options);
+      $response_data = Json::decode($response->getBody()->getContents());
+
+      if($response_data['state'] !== 'ok') {
+        $this->logger->error("Omnia request failed: @error", array(
+            '@error' => $response_data['info']
+          )
+        );
+      }
+      else {
+        $this->logger->info("Successful notification. Streamtype '@streamtype', command '@command', refnr '@refnr', values '@values'", array(
+            '@streamtype' => $streamtype,
+            '@command' => $command,
+            '@refnr' => $reference_number,
+            '@values' => print_r($values, TRUE)
+          )
+        );
+      }
     } catch (RequestException $e) {
       $this->logger->error("HTTP request failed: @error", array(
           '@error' => $e->getMessage()
         )
       );
     }
+    return $response_data;
   }
 }
 

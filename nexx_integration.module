@@ -5,59 +5,124 @@ use Drupal\Core\Entity\EntityInterface;
  * Implements hook_taxonomy_term_insert() to insert terms into nexxOMNIA video CMS.
  */
 function nexx_integration_taxonomy_term_insert(EntityInterface $term) {
-  nexx_integration_taxonomy_term_request($term, 'insert');
+  $database = \Drupal::getContainer()->get('database');
+  $response_data = nexx_integration_taxonomy_term_request($term, 'insert');
+
+  if (!empty($response_data['item'])) {
+    $database->merge('nexx_taxonomy_term_data')->key([
+      'tid' => $term->id()
+    ])->fields([
+      'tid' => $term->id(),
+      'nexx_item_id' => $response_data['item']
+    ])->execute();
+  }
 }
 
 /**
  * Implements hook_taxonomy_term_update() to update terms into nexxOMNIA video CMS.
  */
 function nexx_integration_taxonomy_term_update(EntityInterface $term) {
-  nexx_integration_taxonomy_term_request($term, 'update');
+  $logger = \Drupal::getContainer()
+    ->get('logger.factory')
+    ->get('nexx_integration');
+  $database = \Drupal::getContainer()->get('database');
+
+  $response_data = nexx_integration_taxonomy_term_request($term, 'update');
+
+  // If omnia does not know the object yet, insert it
+  if ($response_data['state'] === 'error' && $response_data['info'] === 'no object') {
+    $logger->info('Unknown update object, inserting it instead');
+    $response_data = nexx_integration_taxonomy_term_request($term, 'insert');
+  }
+  if (!empty($response_data['item'])) {
+    $database->merge('nexx_taxonomy_term_data')->key([
+      'tid' => $term->id()
+    ])->fields([
+      'tid' => $term->id(),
+      'nexx_item_id' => $response_data['item']
+    ])->execute();
+  }
 }
 
 /**
  * Implements hook_taxonomy_term_delete() to delete terms into nexxOMNIA video CMS.
  */
 function nexx_integration_taxonomy_term_delete(EntityInterface $term) {
-  nexx_integration_taxonomy_term_request($term, 'delete');
+  $database = \Drupal::getContainer()->get('database');
+
+  $response_data = nexx_integration_taxonomy_term_request($term, 'delete');
+
+  // remove stale entry
+  $database->delete('nexx_taxonomy_term_data')
+    ->condition(['tid' => $term->id()])
+    ->execute();
 }
 
 /**
  *
  * @param \Drupal\Core\Entity\EntityInterface $term
  *   The term to create / modify / delete at nexxOMNIA
- * @param string $operation
- *   The operation to perform. Valid values are:
+ * @param string $command
+ *   The command to perform. Valid values are:
  *     - create
  *     - update
  *     - delete
  */
-function nexx_integration_taxonomy_term_request(EntityInterface $term, $operation) {
+function nexx_integration_taxonomy_term_request(EntityInterface $term, $command) {
   $term_bundle = $term->bundle();
   $container = \Drupal::getContainer();
   $entity_type_manager = \Drupal::entityTypeManager();
   $nexx_notification = $container->get('nexx_integration.notification');
+  $logger = $container->get('logger.factory')->get('nexx_integration');
 
-  foreach ($container->get('entity_type.bundle.info')->getBundleInfo('media') as $bundle_id => $bundle_info) {
-    $bundle = $entity_type_manager->getStorage('media_bundle')->load($bundle_id);
-    if($bundle->getType()->getPluginId() === 'nexx_video') {
+  $valid_commands = ['create', 'update', 'insert'];
+  if (!in_array($command, $valid_commands)) {
+    $logger->error("Invalid command used: @command", array('@command' => $command));
+    return;
+  }
+
+  foreach ($container->get('entity_type.bundle.info')
+             ->getBundleInfo('media') as $bundle_id => $bundle_info) {
+    $bundle = $entity_type_manager->getStorage('media_bundle')
+      ->load($bundle_id);
+    if ($bundle->getType()->getPluginId() === 'nexx_video') {
       $configuration = $bundle->getType()->getConfiguration();
-      $field_definitions = $container->get('entity_field.manager')->getFieldDefinitions('media', 'nexx_video');
-      $channel_field_settings = $field_definitions[$configuration['channel_field']]->getSetting('handler_settings');
-      $actors_field_settings = $field_definitions[$configuration['actor_field']]->getSetting('handler_settings');
+
+      $field_definitions = $container->get('entity_field.manager')
+        ->getFieldDefinitions('media', $bundle_id);
+
+      if (!empty($configuration['channel_field'])) {
+        $channel_field_settings = $field_definitions[$configuration['channel_field']]->getSetting('handler_settings');
+      }
+      if (!empty($configuration['actor_field'])) {
+        $actors_field_settings = $field_definitions[$configuration['actor_field']]->getSetting('handler_settings');
+      }
+      if (!empty($configuration['tags_field'])) {
+        $tags_field_settings = $field_definitions[$configuration['tags_field']]->getSetting('handler_settings');
+      }
+
 
       /**
        * TODO: Omnia might add more taxonomies then channel and actor in the future.
        * Prepare for this by removing the hard coded names
        */
-      if(in_array($term_bundle, $channel_field_settings['target_bundles'])){
-        $nexx_notification->$operation('channel', $term->id(), $term->label());
-      } else if (in_array($term_bundle, $actors_field_settings['target_bundles'])) {
-        $nexx_notification->$operation('actor', $term->id(), $term->label());
+      if (in_array($term_bundle, $channel_field_settings['target_bundles'])) {
+        $response_data = $nexx_notification->$command('channel', $term->id(), ['title' => $term->label()]);
+      }
+      else {
+        if (in_array($term_bundle, $actors_field_settings['target_bundles'])) {
+          $response_data = $nexx_notification->$command('actor', $term->id(), ['artistname' => $term->label()]);
+        }
+        else {
+          if (in_array($term_bundle, $tags_field_settings['target_bundles'])) {
+            $response_data = $nexx_notification->$command('tags', $term->id(), ['tag' => $term->label()]);
+          }
+        }
       }
       break;
     }
   }
+  return $response_data;
 }
 
 
@@ -67,8 +132,18 @@ function nexx_integration_taxonomy_term_request(EntityInterface $term, $operatio
 function nexx_integration_theme() {
   return array(
     'nexx_player' => array(
-      'variables' => array('video_id' => NULL, 'omnia_id' => NULL, 'container_id' => NULL),
+      'variables' => array(
+        'video_id' => NULL,
+        'omnia_id' => NULL,
+        'container_id' => NULL
+      ),
       'template' => 'nexx-player',
     ),
+    'omnia_editor' => array(
+      'variables' => array(
+        'auth_key' => NULL
+      ),
+      'template' => 'omnia-editor'
+    )
   );
 }
