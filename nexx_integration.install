@@ -20,12 +20,6 @@ function nexx_integration_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-      'vid' => array(
-        'description' => 'The ID of the terms target entity: {taxonomy_term_data}.vid.',
-        'type' => 'varchar_ascii',
-        'not null' => TRUE,
-        'length' => 32,
-      ),
       'nexx_item_id' => array(
         'description' => 'Nexx item ID.',
         'type' => 'int',
@@ -33,7 +27,8 @@ function nexx_integration_schema() {
         'not null' => TRUE,
         'default' => 0,
       )
-    )
+    ),
+    'primary key' => array('tid')
   );
   return $schema;
 }
@@ -78,4 +73,23 @@ function nexx_integration_update_8001() {
   );
   $schema = Database::getConnection()->schema();
   $schema->createTable('nexx_taxonomy_term_data', $spec);
+}
+
+/**
+ * removed faulty update
+ */
+function nexx_integration_update_8002(){}
+
+/**
+ * Add primary key, remove vid
+ */
+function nexx_integration_update_8003(){
+  $spec = array('tid');
+  $schema = Database::getConnection()->schema();
+
+  // A primary key.
+  $schema->addPrimaryKey('nexx_taxonomy_term_data', $spec);
+
+  // remove unused vid column
+  $schema->dropField('nexx_taxonomy_term_data', 'vid');
 }
