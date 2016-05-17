@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Utility\Token;
 use Drupal\media_entity\MediaInterface;
+use Drupal\media_entity\Entity\MediaBundle;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -81,6 +82,17 @@ class Omnia extends ControllerBase {
       $container->get('logger.factory')->get('nexx_integration'),
       $container->get('token')
     );
+  }
+
+  /**
+   * search and edit videos
+   */
+  public function videoList() {
+    return [
+      '#theme' => 'omnia_editor',
+      '#auth_key' => $this->config('nexx_integration.settings')
+        ->get('nexx_api_authkey'),
+    ];
   }
 
   /**
@@ -193,6 +205,7 @@ class Omnia extends ControllerBase {
     $media_config = $media->getType()->getConfiguration();
     $channelField = $media_config['channel_field'];
     $actorField = $media_config['actor_field'];
+    $tagsField = $media_config['tags_field'];
     $teaserImageField = $media_config['teaser_image_field'];
 
     // update taxonomy references
@@ -217,6 +230,7 @@ class Omnia extends ControllerBase {
    * @param $media
    * @param $teaserImageField
    * @param $videoData
+   * @throws \Exception
    */
   protected function mapTeaserImage($media, $teaserImageField, $videoData) {
     $images_field = $media->$teaserImageField;
@@ -226,10 +240,13 @@ class Omnia extends ControllerBase {
      * TODO: there must be a better way to get this information then creating a dummy object
      */
     $images_field_target_bundle = array_shift($images_field->getSetting('handler_settings')['target_bundles']);
+    if(empty($images_field_target_bundle)) {
+      throw new \Exception('No image field target bundle.');
+    }
     $storage = $this->entityTypeManager()
       ->getStorage($images_field_target_type);
-    $thumbnail_entity = $storage->create(['bundle' => $images_field_target_bundle]);
-    $thumbnail_entity->name = $media->label();
+
+    $thumbnail_entity = $storage->create(['bundle' => $images_field_target_bundle, 'name' => $media->label()]);
     $updated_thumbnail_entity = FALSE;
 
     if ($thumb_uri = $videoData->itemData->thumb) {

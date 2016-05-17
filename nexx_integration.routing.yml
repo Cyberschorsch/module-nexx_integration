@@ -15,3 +15,10 @@ nexx_integration.omnia_notification_gateway:
     _permission: 'use omnia notification gateway'
   defaults:
     _controller: '\Drupal\nexx_integration\Controller\Omnia::video'
+
+nexx_integration.list:
+  path: '/admin/content/nexx'
+  defaults:
+    _controller: '\Drupal\nexx_integration\Controller\Omnia::videoList'
+  requirements:
+    _permission: 'edit content'
