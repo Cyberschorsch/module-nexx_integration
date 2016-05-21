@@ -1,0 +1,4 @@
+nexx_integration.admin_content_task:
+  title: nexx Omnia
+  route_name: nexx_integration.list
+  base_route: system.admin_content

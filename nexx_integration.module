@@ -25,22 +25,35 @@ function nexx_integration_taxonomy_term_update(EntityInterface $term) {
   $logger = \Drupal::getContainer()
     ->get('logger.factory')
     ->get('nexx_integration');
+
+  /**
+   * @var
+   */
   $database = \Drupal::getContainer()->get('database');
+  $result = $database->select('nexx_taxonomy_term_data', 'n')
+    ->fields('n', array('nexx_item_id'))
+    ->condition('n.tid', $term->id())
+    ->execute();
 
-  $response_data = nexx_integration_taxonomy_term_request($term, 'update');
+  // no nexx_id found, we need to insert the term
+  if (!$nexx_id = $result->fetchField()) {
+    nexx_integration_taxonomy_term_insert($term);
+  } else {
+    $response_data = nexx_integration_taxonomy_term_request($term, 'update');
 
-  // If omnia does not know the object yet, insert it
-  if ($response_data['state'] === 'error' && $response_data['info'] === 'no object') {
-    $logger->info('Unknown update object, inserting it instead');
-    $response_data = nexx_integration_taxonomy_term_request($term, 'insert');
-  }
-  if (!empty($response_data['item'])) {
-    $database->merge('nexx_taxonomy_term_data')->key([
-      'tid' => $term->id()
-    ])->fields([
-      'tid' => $term->id(),
-      'nexx_item_id' => $response_data['item']
-    ])->execute();
+    // If omnia does not know the object yet, insert it
+    if ($response_data['state'] === 'error' && $response_data['info'] === 'no object') {
+      $logger->info('Unknown update object, inserting it instead');
+      $response_data = nexx_integration_taxonomy_term_request($term, 'insert');
+    }
+    if (!empty($response_data['item'])) {
+      $database->merge('nexx_taxonomy_term_data')->key([
+        'tid' => $term->id()
+      ])->fields([
+        'tid' => $term->id(),
+        'nexx_item_id' => $response_data['item']
+      ])->execute();
+    }
   }
 }
 

@@ -187,7 +187,7 @@ class NexxVideo extends MediaTypeBase {
       '#options' => $this->getMediaEntityReferenceFields($bundle->id(), ['media']),
       '#empty_option' => $this->t('Select field'),
       '#default_value' => $default_bundle,
-      '#description' => $this->t('The field which is used for the teaser image. You can create a bundle without selecting a value for this dropdown initially. This dropdown can be populated after adding media, image or file fields to the bundle.'),
+      '#description' => $this->t('The field which is used for the teaser image. You can create a bundle without selecting a value for this dropdown initially. This dropdown can be populated after adding media fields to the bundle.'),
     ];
     return $form;
   }
