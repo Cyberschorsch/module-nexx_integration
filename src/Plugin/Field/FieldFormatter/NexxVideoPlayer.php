@@ -90,6 +90,11 @@ class NexxVideoPlayer extends FormatterBase implements ContainerFactoryPluginInt
         '#omnia_id' => $this->config->get('omnia_id'),
         '#video_id' => $item->item_id,
         '#container_id' => 'player--' . Crypt::randomBytesBase64(8),
+        '#attached' => array(
+          'library' => array(
+            'nexx_integration/base'
+          )
+        )
         /*
         '#cache' => [
           'tags' => $user->getCacheTags(),
