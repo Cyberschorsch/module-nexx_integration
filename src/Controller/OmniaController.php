@@ -155,7 +155,7 @@ class OmniaController extends ControllerBase {
     if (!isset($videoData->itemID)) {
       throw new \Exception('ItemID missing');
     }
-
+    $this->logger->info("@content", array('@content' => $content));
     $this->logger->info('Incoming video "@title" (nexx id: @id)', array(
       '@title' => $videoData->itemData->title,
       '@id' => $videoData->itemID,
