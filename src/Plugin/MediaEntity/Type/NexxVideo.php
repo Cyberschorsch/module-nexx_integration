@@ -217,20 +217,24 @@ class NexxVideo extends MediaTypeBase {
    */
   public function thumbnail(MediaInterface $media) {
     $teaser_field = $this->configuration['teaser_image_field'];
-    $teaser_image = $media->{$teaser_field}->first()->entity;
 
-    $source_field = $this->entityTypeManager->getStorage('media_bundle')
-      ->load($teaser_image->bundle())
-      ->getTypeConfiguration()['source_field'];
+    // if a teaser file mapping is given, use this as thumbnail
+    if(!empty($teaser_field) && !empty($media->{$teaser_field})) {
+      $teaser_image = $media->{$teaser_field}->first()->entity;
 
-    if (!empty($source_field)) {
+      $source_field = $this->entityTypeManager->getStorage('media_bundle')
+        ->load($teaser_image->bundle())
+        ->getTypeConfiguration()['source_field'];
 
-      /* @var \Drupal\file\Entity\File $uri */
-      $uri = $teaser_image->{$source_field}->first()->entity->getFileUri();
-      $this->logger->debug("field map: @field", array('@field' => print_r($teaser_field, TRUE)));
-      $this->logger->debug("thumbnail uri: @uri", array('@uri' => $uri));
-      if ($uri) {
-        return $uri;
+      if (!empty($source_field)) {
+
+        /* @var \Drupal\file\Entity\File $uri */
+        $uri = $teaser_image->{$source_field}->first()->entity->getFileUri();
+        $this->logger->debug("field map: @field", array('@field' => print_r($teaser_field, TRUE)));
+        $this->logger->debug("thumbnail uri: @uri", array('@uri' => $uri));
+        if ($uri) {
+          return $uri;
+        }
       }
     }
     return $this->getDefaultThumbnail();
